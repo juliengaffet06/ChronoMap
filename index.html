@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1d5b8f">
+<title>Chrono-Map</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Concept : cyanotype. Planche d'archive bleu de Prusse, repère de vérité en ocre. */
+:root{
+  --bg:#e8eef2; --paper:#f6f9fb; --ink:#12232f; --muted:#57707f; --line:#c3d0d8;
+  --accent:#1d5b8f; --accent-ink:#ffffff; --truth:#b8741a;
+  --land:#cfdbe3; --sea:#e0eaf0; --grid:#b9c9d4;
+  --t-top:#2f8f5b; --t-ok:#86a33a; --t-mid:#d89a2b; --t-low:#c5473c;
+  --f-display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0b1721; --paper:#12212d; --ink:#dce8f0; --muted:#8aa1b1; --line:#2a3f4e;
+    --accent:#6db3e8; --accent-ink:#07202f; --truth:#e2a44a;
+    --land:#22384a; --sea:#0f1f2b; --grid:#1d3141;
+    --t-top:#43b074; --t-ok:#9bbb4c; --t-mid:#e0a63a; --t-low:#dd6459;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:16px/1.5 var(--f-body);
+  padding:max(14px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(28px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+h1{font:700 26px/1.1 var(--f-display);margin:0;letter-spacing:-.01em}
+.tag{font-size:13px;color:var(--muted);margin:2px 0 0}
+.stat{font:500 14px var(--f-mono);color:var(--muted);text-align:right}
+.stat b{color:var(--ink);font-weight:500}
+.card{background:var(--paper);border:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:10px}
+.lbl{font:500 11px var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.frame{min-height:190px;display:grid;place-items:center;background:var(--sea);border:1px solid var(--line);overflow:hidden;position:relative}
+.frame img{display:block;width:100%;max-height:54vh;object-fit:contain}
+.frame .msg{padding:18px;text-align:center;color:var(--muted);font-size:14px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.yearrow{display:flex;align-items:center;gap:10px}
+.yr{font:500 34px/1 var(--f-mono);min-width:5ch;text-align:center;font-variant-numeric:tabular-nums}
+button{font:500 15px var(--f-body);cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--ink);padding:10px 14px;min-height:44px}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible,a:focus-visible,svg:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.pm{width:44px;padding:0;font:500 22px var(--f-mono)}
+button.main{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);width:100%;font-weight:500;font-size:16px}
+button.ghost{border-color:transparent;color:var(--accent);padding:8px 6px;min-height:36px;font-size:14px}
+input[type=range]{flex:1;min-width:0;accent-color:var(--accent);height:32px;margin:0}
+.ends{display:flex;justify-content:space-between;font:500 11px var(--f-mono);color:var(--muted)}
+.mapbox{position:relative;aspect-ratio:4/3;width:100%;border:1px solid var(--line);background:var(--sea);overflow:hidden}
+.mapbox svg{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+.land{fill:var(--land);stroke:var(--grid);stroke-width:1;vector-effect:non-scaling-stroke}
+.grat{stroke:var(--grid);stroke-width:.6;opacity:.55;vector-effect:non-scaling-stroke;fill:none}
+.zoom{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px}
+.zoom button{width:40px;height:40px;min-height:0;padding:0;background:var(--paper);font:500 20px var(--f-mono)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{min-height:34px;padding:5px 10px;font-size:13px}
+.hint{font-size:13px;color:var(--muted);min-height:1.4em}
+.err{color:var(--t-low);font-size:14px;min-height:1.4em}
+.res h2{font:700 22px/1.15 var(--f-display);margin:0}
+.res .cap{font-size:13px;color:var(--muted);margin:0}
+.rows{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:15px;margin:0}
+.rows dt{color:var(--muted)}
+.rows dd{margin:0;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.sub{color:var(--muted);font-size:13px}
+.tot{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);padding-top:8px}
+.tot b{font:500 26px var(--f-mono)}
+.key{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.big{font:700 44px/1 var(--f-display);margin:0;font-variant-numeric:tabular-nums}
+.sqs{display:flex;gap:8px}
+.sq{flex:1;height:44px}
+.sq.top{background:var(--t-top)} .sq.ok{background:var(--t-ok)} .sq.mid{background:var(--t-mid)} .sq.low{background:var(--t-low)}
+textarea{width:100%;font:14px/1.4 var(--f-mono);background:var(--bg);color:var(--ink);border:1px solid var(--line);padding:8px;resize:none}
+a{color:var(--accent)}
+footer{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media (prefers-reduced-motion:no-preference){.card{animation:in .25s ease-out}@keyframes in{from{opacity:.4;transform:translateY(4px)}}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Chrono-Map</h1>
+      <p class="tag" id="tag">Quand et où ? Une photo d'archive, cinq manches.</p>
+    </div>
+    <div class="stat">Manche <b id="rnd">1/5</b><br><b id="pts">0</b> pts</div>
+  </header>
+
+  <section class="card" aria-label="Photographie">
+    <div class="lbl"><span id="photoLbl">Photo d'archive</span><span id="photoYrHint"></span></div>
+    <div class="frame" id="frame">
+      <div class="msg" id="loading">Chargement de la photo…</div>
+      <img id="photo" alt="Photographie d'archive à dater et à situer" referrerpolicy="no-referrer" hidden>
+      <div class="msg" id="fail" hidden>
+        <span>La photo ne s'affiche pas ici.</span>
+        <a id="failLink" href="#" target="_blank" rel="noopener">Voir le fichier sur Wikimedia Commons</a>
+        <button id="skip" type="button">Passer à une autre photo</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="playCard" aria-label="Ta réponse">
+    <div class="lbl"><span>1. L'année</span><span>1850 – 1950</span></div>
+    <div class="yearrow">
+      <button class="pm" id="ym" type="button" aria-label="Un an de moins">−</button>
+      <div class="yr" id="yr">1900</div>
+      <button class="pm" id="yp" type="button" aria-label="Un an de plus">+</button>
+      <input type="range" id="slider" min="1850" max="1950" step="1" value="1900" aria-label="Année">
+    </div>
+    <div class="ends"><span>1850</span><span>1900</span><span>1950</span></div>
+
+    <div class="lbl" style="margin-top:4px"><span>2. Le lieu</span><span id="pinState">aucun repère</span></div>
+    <div class="chips" id="chips">
+      <button type="button" data-v="0,15,360">Monde</button>
+      <button type="button" data-v="10,48,45">Europe</button>
+      <button type="button" data-v="-100,40,90">Amérique N.</button>
+      <button type="button" data-v="-62,-18,85">Amérique S.</button>
+      <button type="button" data-v="95,32,115">Asie</button>
+      <button type="button" data-v="20,5,95">Afrique</button>
+      <button type="button" data-v="140,-28,75">Océanie</button>
+    </div>
+    <div class="mapbox">
+      <svg id="map" viewBox="0 0 360 270" role="img" tabindex="0" aria-label="Carte du monde schématique. Touche la carte pour poser un repère, glisse pour déplacer.">
+        <rect x="-2000" y="-2000" width="4400" height="4400" fill="var(--sea)"/>
+        <g id="grat"></g><g id="land"></g><g id="pins"></g>
+      </svg>
+      <div class="zoom">
+        <button type="button" id="zin" aria-label="Zoom avant">+</button>
+        <button type="button" id="zout" aria-label="Zoom arrière">−</button>
+      </div>
+    </div>
+    <div class="hint">Touche la carte pour poser un repère. Glisse pour te déplacer. Carte schématique.</div>
+    <div class="err" id="err" role="alert"></div>
+    <button class="main" id="go" type="button">Valider ma réponse</button>
+  </section>
+
+  <section class="card res" id="resCard" aria-live="polite" hidden>
+    <div class="lbl"><span>Résultat</span><span id="creditTop"></span></div>
+    <h2 id="resPlace"></h2>
+    <p class="cap" id="resCredit"></p>
+    <dl class="rows" id="rows"></dl>
+    <div class="tot"><span>Score de la manche</span><span><b id="resTot">0</b> <span class="sub">/ 5 000</span></span></div>
+    <div class="sub"><span class="key" style="background:var(--accent)"></span>ta réponse &nbsp; <span class="key" style="background:var(--truth)"></span>réalité</div>
+    <button class="main" id="next" type="button">Manche suivante</button>
+  </section>
+
+  <section class="card" id="endCard" hidden>
+    <div class="lbl"><span id="endTitle">Partie terminée</span><span id="endMode"></span></div>
+    <p class="big"><span id="endTot">0</span> <span class="sub" style="font:500 16px var(--f-mono)">/ 25 000</span></p>
+    <div class="sqs" id="sqs"></div>
+    <textarea id="share" rows="7" readonly aria-label="Résultat à partager"></textarea>
+    <button class="main" id="copy" type="button">Copier le résultat</button>
+    <div class="err" id="copyMsg" style="color:var(--muted)"></div>
+    <button type="button" id="again">Rejouer avec d'autres photos</button>
+  </section>
+
+  <footer>
+    <span>Photos : Wikimedia Commons, domaine public ou CC0.</span>
+    <span>Prototype v0.1</span>
+  </footer>
+</div>
+
+<script>
+var PHOTOS=[
+{id:"bievre",f:"Rue de Bièvre, PH3851.jpg",y:1924,tol:0,lat:48.8503,lon:2.3519,place:"Rue de Bièvre, Paris",credit:"Eugène Atget, Musée Carnavalet (CC0)"},
+{id:"mouffetard",f:"Rue Mouffetard, Paris ca. 1900.jpg",y:1900,tol:5,lat:48.8430,lon:2.3500,place:"Rue Mouffetard, Paris",credit:"Eugène Atget, Metropolitan Museum (CC0)"},
+{id:"leipziger",f:"Leipziger Str. 30–32 (Berlin-Mitte) in 1889.jpg",y:1889,tol:0,lat:52.5108,lon:13.3995,place:"Leipziger Straße, Berlin",credit:"Domaine public"},
+{id:"sydney",f:"Oxford Street, Sydney 1910 A-00039079.jpg",y:1910,tol:0,lat:-33.8770,lon:151.2130,place:"Oxford Street, Sydney",credit:"City of Sydney Archives"},
+{id:"ginza",f:"Ginza in 1933.JPG",y:1933,tol:0,lat:35.6717,lon:139.7650,place:"Ginza, Tokyo",credit:"Domaine public (Japon)"},
+{id:"parel",f:"Parel Railway Station c 1900.jpg",y:1900,tol:5,lat:18.9980,lon:72.8400,place:"Gare de Parel, Bombay (Mumbai)",credit:"ETH-Bibliothek (CC0)"},
+{id:"florida",f:"Calle Florida - Boote.jpg",y:1889,tol:5,lat:-34.6037,lon:-58.3750,place:"Calle Florida, Buenos Aires",credit:"Samuel Boote, domaine public"},
+{id:"fleet",f:"Fleet Street. By James Valentine c.1890..jpg",y:1890,tol:5,lat:51.5139,lon:-0.1085,place:"Fleet Street, Londres",credit:"James Valentine, domaine public"},
+{id:"shanghai",f:"Shanghai 1928 Bund Cenotaph.jpeg",y:1928,tol:0,lat:31.2400,lon:121.4905,place:"Le Bund, Shanghai",credit:"Virtual Shanghai, domaine public"},
+{id:"constantinople",f:"Constantinople and the Golden Horn, Turkey, 1890s.jpg",y:1895,tol:5,lat:41.0200,lon:28.9740,place:"La Corne d'Or, Constantinople",credit:"Photoglob Zürich, domaine public"},
+{id:"longbeach",f:"First Street in Long Beach, 1910.jpg",y:1910,tol:0,lat:33.7701,lon:-118.1937,place:"First Street, Long Beach (Californie)",credit:"USC Libraries / California Historical Society"}
+];
+
+var LAND=[
+[[-168,66],[-140,70],[-95,72],[-80,70],[-62,60],[-55,50],[-67,44],[-76,35],[-81,25],[-97,26],[-97,18],[-88,15],[-80,8],[-90,14],[-105,20],[-117,32],[-124,40],[-125,49],[-135,58],[-150,60],[-165,60]],
+[[-55,60],[-45,60],[-20,70],[-20,82],[-60,82],[-70,76]],
+[[-80,8],[-62,10],[-50,0],[-35,-6],[-40,-22],[-58,-38],[-65,-55],[-74,-50],[-72,-30],[-70,-18],[-81,-5]],
+[[-9,37],[-9,43],[-1,46],[-4,48],[2,51],[8,54],[9,57],[5,60],[12,66],[20,70],[30,71],[60,69],[70,73],[100,78],[140,72],[170,70],[178,65],[163,60],[156,51],[142,54],[140,47],[130,42],[129,35],[122,40],[121,31],[117,23],[108,21],[106,10],[100,13],[100,3],[104,1],[98,16],[92,21],[87,21],[80,15],[77,8],[73,17],[67,24],[57,25],[56,18],[52,16],[43,13],[39,21],[35,28],[34,31],[36,36],[28,37],[26,40],[22,37],[20,40],[14,45],[12,44],[16,38],[10,44],[3,43],[0,39],[-5,36]],
+[[-17,21],[-10,30],[-6,36],[10,37],[11,33],[32,31],[34,28],[43,12],[51,12],[41,-3],[40,-15],[35,-25],[20,-35],[18,-32],[12,-17],[9,-1],[6,5],[-8,4],[-17,14]],
+[[114,-22],[122,-18],[131,-12],[137,-12],[142,-11],[146,-19],[153,-26],[150,-37],[141,-38],[131,-31],[115,-34]],
+[[-5,50],[1,51],[2,53],[-2,57],[-6,58],[-5,54]],
+[[130,31],[135,34],[141,36],[142,40],[141,45],[138,38],[131,34]]
+];
+
+var Y_MIN=1850, Y_MAX=1950, ROUNDS=5;
+var $=function(id){return document.getElementById(id)};
+var svg=$("map"), vb=[0,-60,360,270];
+var S={mode:"daily",queue:[],idx:0,round:0,results:[],total:0,phase:"play",year:1900,pin:null,truthShown:false};
+
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function shuffle(arr,rnd){var a=arr.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(rnd()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function dayNumber(){return Math.max(1,Math.floor((Date.now()-Date.UTC(2026,10,1))/864e5)+1)}
+function fmt(n){return Math.round(n).toLocaleString("fr-FR").replace(/ /g," ")}
+function haversine(a,b,c,d){var R=6371,r=Math.PI/180,dl=(c-a)*r,dn=(d-b)*r;var h=Math.sin(dl/2)*Math.sin(dl/2)+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dn/2)*Math.sin(dn/2);return 2*R*Math.asin(Math.sqrt(h))}
+function scoreYear(guess,truth,tol){var d=Math.max(0,Math.abs(guess-truth)-tol);return {diff:Math.abs(guess-truth),pts:Math.round(2500*Math.exp(-d/22))}}
+function scoreDist(km){return Math.round(2500*Math.exp(-km/1500))}
+function tier(p){return p>=4000?"top":p>=2500?"ok":p>=1200?"mid":"low"}
+
+function drawBase(){
+  var g="";
+  for(var lo=-180;lo<=180;lo+=30){g+='<line class="grat" x1="'+(lo+180)+'" y1="-300" x2="'+(lo+180)+'" y2="500"/>'}
+  for(var la=-60;la<=60;la+=30){g+='<line class="grat" x1="-300" y1="'+(90-la)+'" x2="700" y2="'+(90-la)+'"/>'}
+  $("grat").innerHTML=g;
+  var p="";
+  LAND.forEach(function(poly){
+    var d="M"+poly.map(function(q){return (q[0]+180)+","+(90-q[1])}).join("L")+"Z";
+    p+='<path class="land" d="'+d+'"/>';
+  });
+  $("land").innerHTML=p;
+}
+
+function setView(cx,cy,w){
+  w=Math.max(6,Math.min(360,w));
+  cx=Math.max(-60,Math.min(420,cx));cy=Math.max(-30,Math.min(210,cy));
+  vb=[cx-w/2,cy-w*0.375,w,w*0.75];
+  applyView();
+}
+function setViewLL(lon,lat,w){setView(lon+180,90-lat,w)}
+function applyView(){svg.setAttribute("viewBox",vb.join(" "));drawPins()}
+
+function drawPins(){
+  var r=vb[2]/46,h="";
+  function dot(lon,lat,fill){return '<circle cx="'+(lon+180)+'" cy="'+(90-lat)+'" r="'+r+'" fill="'+fill+'" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke"/>'}
+  if(S.truthShown&&S.pin){
+    var t=PHOTOS[S.queue[S.idx]];
+    h+='<line x1="'+(S.pin.lon+180)+'" y1="'+(90-S.pin.lat)+'" x2="'+(t.lon+180)+'" y2="'+(90-t.lat)+'" stroke="var(--ink)" stroke-width="1.6" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>';
+    h+=dot(t.lon,t.lat,"var(--truth)");
+  }
+  if(S.pin)h+=dot(S.pin.lon,S.pin.lat,"var(--accent)");
+  $("pins").innerHTML=h;
+}
+
+function eventLL(e){
+  var pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;
+  var m=svg.getScreenCTM();if(!m)return null;
+  var p=pt.matrixTransform(m.inverse());
+  var lon=p.x-180,lat=90-p.y;
+  while(lon>180)lon-=360;while(lon<-180)lon+=360;
+  return {lon:lon,lat:Math.max(-85,Math.min(85,lat))};
+}
+
+var drag=null;
+svg.addEventListener("pointerdown",function(e){
+  try{svg.setPointerCapture(e.pointerId)}catch(_){}
+  drag={x:e.clientX,y:e.clientY,vx:vb[0],vy:vb[1],moved:false};
+});
+svg.addEventListener("pointermove",function(e){
+  if(!drag)return;
+  var dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+  if(Math.abs(dx)+Math.abs(dy)>7)drag.moved=true;
+  if(drag.moved){
+    var rect=svg.getBoundingClientRect(),k=vb[2]/rect.width;
+    vb[0]=drag.vx-dx*k;vb[1]=drag.vy-dy*k;applyView();
+  }
+});
+svg.addEventListener("pointerup",function(e){
+  if(drag&&!drag.moved&&S.phase==="play"){
+    var ll=eventLL(e);
+    if(ll){S.pin=ll;$("err").textContent="";updatePinState();drawPins()}
+  }
+  drag=null;
+});
+svg.addEventListener("pointercancel",function(){drag=null});
+
+function updatePinState(){
+  $("pinState").textContent=S.pin?("repère posé : "+S.pin.lat.toFixed(1)+"°, "+S.pin.lon.toFixed(1)+"°"):"aucun repère";
+}
+function zoom(f){
+  var cx=vb[0]+vb[2]/2,cy=vb[1]+vb[3]/2;
+  if(S.pin&&S.phase==="play"){cx=S.pin.lon+180;cy=90-S.pin.lat}
+  setView(cx,cy,vb[2]*f);
+}
+$("zin").addEventListener("click",function(){zoom(0.5)});
+$("zout").addEventListener("click",function(){zoom(2)});
+$("chips").addEventListener("click",function(e){
+  var b=e.target.closest("button");if(!b)return;
+  var v=b.getAttribute("data-v").split(",").map(Number);
+  setViewLL(v[0],v[1],v[2]);
+});
+
+function setYear(y){
+  y=Math.max(Y_MIN,Math.min(Y_MAX,y));
+  S.year=y;$("yr").textContent=y;$("slider").value=y;
+}
+$("slider").addEventListener("input",function(){setYear(parseInt(this.value,10))});
+$("ym").addEventListener("click",function(){setYear(S.year-1)});
+$("yp").addEventListener("click",function(){setYear(S.year+1)});
+
+function cur(){return PHOTOS[S.queue[S.idx]]}
+function commonsPage(p){return "https://commons.wikimedia.org/wiki/File:"+encodeURIComponent(p.f.replace(/ /g,"_"))}
+function commonsImg(p){return "https://commons.wikimedia.org/wiki/Special:FilePath/"+encodeURIComponent(p.f)+"?width=1000"}
+
+function newGame(mode){
+  S.mode=mode;
+  var rnd,n=dayNumber();
+  rnd=mode==="daily"?mulberry(n*7919+13):Math.random;
+  S.queue=shuffle(PHOTOS.map(function(_,i){return i}),rnd);
+  S.idx=0;S.round=0;S.results=[];S.total=0;
+  $("endCard").hidden=true;
+  $("tag").textContent=mode==="daily"?("Défi du jour n° "+n+" · une photo, une date, un lieu."):"Partie au hasard · une photo, une date, un lieu.";
+  startRound();
+}
+
+function startRound(){
+  S.phase="play";S.pin=null;S.truthShown=false;
+  setYear(1900);updatePinState();$("err").textContent="";
+  $("resCard").hidden=true;$("playCard").hidden=false;
+  $("rnd").textContent=(S.round+1)+"/"+ROUNDS;$("pts").textContent=fmt(S.total);
+  $("photoLbl").textContent="Photo d'archive "+(S.round+1)+" sur "+ROUNDS;
+  $("photoYrHint").textContent="";
+  setViewLL(0,15,360);
+  loadPhoto();
+}
+
+function photoSources(p){
+  var s=[];
+  if(window.PHOTO_DATA&&window.PHOTO_DATA[p.id])s.push(window.PHOTO_DATA[p.id]);
+  s.push("photos/"+p.id+".jpg");
+  s.push(commonsImg(p));
+  return s;
+}
+function loadPhoto(){
+  var p=cur(),img=$("photo"),srcs=photoSources(p),k=0;
+  $("loading").hidden=false;$("fail").hidden=true;img.hidden=true;
+  $("failLink").href=commonsPage(p);
+  img.onload=function(){$("loading").hidden=true;img.hidden=false};
+  img.onerror=function(){
+    k++;
+    if(k<srcs.length){img.src=srcs[k];return}
+    $("loading").hidden=true;img.hidden=true;$("fail").hidden=false;
+  };
+  img.src=srcs[0];
+}
+$("skip").addEventListener("click",function(){
+  if(S.idx<S.queue.length-1){S.idx++;loadPhoto()}
+  else{$("fail").querySelector("span").textContent="Plus de photo de rechange."}
+});
+
+$("go").addEventListener("click",function(){
+  if(S.phase!=="play")return;
+  if(!S.pin){$("err").textContent="Pose d'abord un repère sur la carte.";return}
+  var p=cur();
+  var ys=scoreYear(S.year,p.y,p.tol);
+  var km=haversine(S.pin.lat,S.pin.lon,p.lat,p.lon);
+  var ds=scoreDist(km);
+  var tot=ys.pts+ds;
+  S.results.push(tot);S.total+=tot;S.phase="reveal";S.truthShown=true;
+  $("playCard").hidden=true;$("resCard").hidden=false;
+  $("resPlace").textContent=p.place+", "+(p.tol?"vers ":"")+p.y;
+  $("resCredit").innerHTML='Source : '+p.credit+' · <a href="'+commonsPage(p)+'" target="_blank" rel="noopener">fiche Commons</a>';
+  var kmTxt=km<10?km.toFixed(1).replace(".",","):fmt(km);
+  $("rows").innerHTML=
+    '<dt>Ta réponse</dt><dd>'+S.year+'</dd>'+
+    '<dt>Réalité</dt><dd>'+(p.tol?"~":"")+p.y+'</dd>'+
+    '<dt>Écart de date'+(p.tol?' <span class="sub">(±'+p.tol+' ans admis)</span>':'')+'</dt><dd>'+ys.diff+' an'+(ys.diff>1?"s":"")+'</dd>'+
+    '<dt>Points date</dt><dd>'+fmt(ys.pts)+'</dd>'+
+    '<dt>Écart de lieu</dt><dd>'+kmTxt+' km</dd>'+
+    '<dt>Points lieu</dt><dd>'+fmt(ds)+'</dd>';
+  $("resTot").textContent=fmt(tot);
+  $("pts").textContent=fmt(S.total);
+  $("next").textContent=S.round+1>=ROUNDS?"Voir mon score":"Manche suivante";
+  var dx=Math.abs(S.pin.lon-p.lon),dy=Math.abs(S.pin.lat-p.lat);
+  setViewLL((S.pin.lon+p.lon)/2,(S.pin.lat+p.lat)/2,Math.max(dx*1.9,dy*1.9*4/3,10));
+  $("resCard").scrollIntoView({behavior:"smooth",block:"nearest"});
+});
+
+$("next").addEventListener("click",function(){
+  S.round++;
+  if(S.round>=ROUNDS){endGame();return}
+  S.idx++;
+  if(S.idx>=S.queue.length)S.idx=0;
+  startRound();
+  window.scrollTo({top:0,behavior:"smooth"});
+});
+
+function endGame(){
+  S.phase="end";
+  $("resCard").hidden=true;$("endCard").hidden=false;
+  $("endTot").textContent=fmt(S.total);
+  $("rnd").textContent=ROUNDS+"/"+ROUNDS;
+  $("endMode").textContent=S.mode==="daily"?("n° "+dayNumber()):"au hasard";
+  $("sqs").innerHTML=S.results.map(function(r){return '<div class="sq '+tier(r)+'" title="'+fmt(r)+' pts"></div>'}).join("");
+  var em={top:"🟩",ok:"🟨",mid:"🟧",low:"🟥"};
+  var title=S.mode==="daily"?("Chrono-Map n°"+dayNumber()):"Chrono-Map";
+  $("share").value=title+"\n"+fmt(S.total)+" / 25 000\n"+S.results.map(function(r){return em[tier(r)]}).join("")+"\n(adresse du jeu)";
+  $("copyMsg").textContent="";
+  $("endCard").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+$("copy").addEventListener("click",function(){
+  var t=$("share").value;
+  function fallback(){$("share").focus();$("share").select();$("copyMsg").textContent="Sélectionné : copie avec Ctrl+C ou le menu de ton téléphone."}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){$("copyMsg").textContent="Copié."},fallback);
+  }else fallback();
+});
+$("again").addEventListener("click",function(){newGame("random");window.scrollTo({top:0,behavior:"smooth"})});
+
+drawBase();
+newGame("daily");
+if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){
+  navigator.serviceWorker.register("sw.js").catch(function(){});
+}
+</script>
+</body>
+</html>

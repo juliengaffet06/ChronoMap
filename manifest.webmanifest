@@ -1,0 +1,16 @@
+{
+  "name": "Chrono-Map",
+  "short_name": "Chrono-Map",
+  "description": "Date et lieu d'une photo d'archive en cinq manches.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e8eef2",
+  "theme_color": "#1d5b8f",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
